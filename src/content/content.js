@@ -55,6 +55,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ error: error.message });
       });
     return true; // Required for async response
+  } else if (request.action === 'refresh') {
+    log.info('Received refresh request');
+    initialize()
+      .then(() => {
+        log.success('Refresh completed successfully');
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        log.error('Refresh failed:', error);
+        sendResponse({ error: error.message });
+      });
+    return true; // Required for async response
   }
 });
 
@@ -78,19 +90,30 @@ async function getYouTubeTranscript() {
       log.info('Found transcript button, clicking it');
       // Click the button and wait for panel to appear
       showTranscriptButton.click();
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for panel to load
       
-      transcriptPanel = document.querySelector('ytd-transcript-segment-list-renderer');
-      if (!transcriptPanel) {
-        throw new Error('Failed to load transcript panel');
+      // Wait for the transcript panel to appear using waitForElement
+      log.info('Waiting for transcript panel to load...');
+      try {
+        transcriptPanel = await waitForElement('ytd-transcript-segment-list-renderer', 5000);
+        log.success('Transcript panel loaded successfully');
+      } catch (error) {
+        throw new Error('Failed to load transcript panel after clicking button. Try refreshing the page.');
       }
-      log.success('Transcript panel opened successfully');
     }
+
+    // Wait a short moment for the segments to be populated
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Get all transcript segments
     const segments = transcriptPanel.querySelectorAll('ytd-transcript-segment-renderer');
     if (!segments.length) {
-      throw new Error('No transcript segments found');
+      // If no segments found immediately, wait a bit longer and try again
+      log.info('No segments found, waiting longer...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      segments = transcriptPanel.querySelectorAll('ytd-transcript-segment-renderer');
+      if (!segments.length) {
+        throw new Error('No transcript segments found. The video might not have a transcript available.');
+      }
     }
     log.info('Found transcript segments', { count: segments.length });
 
@@ -104,7 +127,7 @@ async function getYouTubeTranscript() {
     });
 
     if (!transcript.trim()) {
-      throw new Error('Failed to extract transcript text');
+      throw new Error('Failed to extract transcript text. The transcript might be empty.');
     }
 
     log.success('Transcript extracted successfully', {
@@ -164,7 +187,7 @@ function updatePanelContent(content, isError = false) {
 }
 
 // Wait for elements to be present in DOM
-function waitForElement(selector, timeout = 5000) {
+async function waitForElement(selector, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
     
@@ -190,18 +213,61 @@ function waitForElement(selector, timeout = 5000) {
 // Main initialization function
 async function initialize() {
   try {
+    log.info('Starting initialization');
     // Add Font Awesome
     addFontAwesome();
     
     // Wait for the secondary column
     const secondaryColumn = await waitForElement('#secondary');
+    log.info('Found secondary column');
     
     // Create and inject panel
     const panel = createSummaryPanel();
     secondaryColumn.insertBefore(panel, secondaryColumn.firstChild);
+    log.success('Injected summary panel');
+
+    // Wait for transcript button to appear
+    log.info('Waiting for transcript button...');
+    await waitForElement('button.yt-spec-button-shape-next--outline[aria-label="Show transcript"]');
+    log.success('Transcript button found');
+
+    // Start transcript extraction and summarization
+    try {
+      const transcript = await getYouTubeTranscript();
+      log.success('Transcript extracted, sending for summarization');
+      
+      // Update panel to show loading state
+      updatePanelContent(`
+        <div class="loading">
+          <i class="fas fa-circle-notch fa-spin"></i>
+          <span>Generating summary...</span>
+        </div>
+      `);
+
+      // Send to background script for summarization
+      const response = await chrome.runtime.sendMessage({
+        action: 'summarize',
+        transcript
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Update panel with summary
+      updatePanelContent(response.summary);
+      log.success('Summary displayed successfully');
+    } catch (error) {
+      log.error('Failed to generate summary:', error);
+      updatePanelContent(error.message, true);
+    }
   } catch (error) {
-    console.error('Failed to initialize:', error);
-    updatePanelContent(error.message, true);
+    log.error('Initialization failed:', error);
+    if (error.message.includes('Timeout')) {
+      updatePanelContent('Transcript not available for this video.', true);
+    } else {
+      updatePanelContent(error.message, true);
+    }
   }
 }
 
@@ -211,6 +277,7 @@ const observer = new MutationObserver(() => {
   if (location.href !== currentUrl) {
     currentUrl = location.href;
     if (currentUrl.includes('youtube.com/watch')) {
+      log.info('URL changed, reinitializing');
       initialize();
     }
   }
@@ -223,5 +290,6 @@ observer.observe(document.querySelector('body'), {
 
 // Initial load
 if (location.href.includes('youtube.com/watch')) {
+  log.info('Initial page load detected');
   initialize();
 } 

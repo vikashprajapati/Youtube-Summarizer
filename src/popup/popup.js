@@ -58,11 +58,8 @@ async function injectContentScript(tabId) {
 document.addEventListener('DOMContentLoaded', async () => {
   log.info('Popup initialized');
   const apiConfig = document.getElementById('api-config');
-  const loading = document.getElementById('loading');
   const error = document.getElementById('error');
-  const summary = document.getElementById('summary');
-  const summarizeBtn = document.getElementById('summarize');
-  const summaryText = document.getElementById('summary-text');
+  const refreshBtn = document.getElementById('refreshSummary');
   const apiKey = document.getElementById('apiKey');
   const toggleVisibility = document.getElementById('toggleVisibility');
   const saveApiKey = document.getElementById('saveApiKey');
@@ -74,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!result.geminiApiKey) {
     log.info('No API key found, showing configuration panel');
     apiConfig.classList.remove('hidden');
-    summarizeBtn.classList.add('hidden');
+    refreshBtn.classList.add('hidden');
   } else {
     log.success('API key found');
   }
@@ -133,10 +130,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       apiStatus.textContent = 'API key saved successfully!';
       apiStatus.className = 'status success';
       
-      // Show summarize button and hide API config after short delay
+      // Show refresh button and hide API config after short delay
       setTimeout(() => {
         apiConfig.classList.add('hidden');
-        summarizeBtn.classList.remove('hidden');
+        refreshBtn.classList.remove('hidden');
       }, 1500);
     } catch (error) {
       log.error('API key validation failed:', error);
@@ -147,16 +144,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Summarize button click handler
-  summarizeBtn.addEventListener('click', async () => {
-    log.info('Summarize button clicked');
-    // Hide any previous content
-    summary.classList.add('hidden');
+  // Refresh button click handler
+  refreshBtn.addEventListener('click', async () => {
+    log.info('Refresh button clicked');
+    refreshBtn.disabled = true;
     error.classList.add('hidden');
-    
-    // Show loading
-    loading.classList.remove('hidden');
-    summarizeBtn.disabled = true;
 
     try {
       // Get current tab
@@ -172,59 +164,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Please navigate to a YouTube video page');
       }
 
-      // Inject content script if not already injected
-      log.info('Injecting content script');
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content/content.js']
-        });
-        log.success('Content script injected successfully');
-      } catch (err) {
-        // If error is about script already existing, we can proceed
-        if (!err.message?.includes('already exists')) {
-          throw err;
-        }
-        log.info('Content script already exists');
-      }
+      // Send refresh message to content script
+      log.info('Sending refresh message to content script');
+      await chrome.tabs.sendMessage(tab.id, { action: 'refresh' });
+      log.success('Refresh message sent');
       
-      // First get the transcript from content script
-      log.info('Requesting transcript from content script');
-      const transcriptResponse = await chrome.tabs.sendMessage(tab.id, { action: 'getTranscript' });
-      
-      if (transcriptResponse.error) {
-        throw new Error(transcriptResponse.error);
-      }
-      log.success('Received transcript', { length: transcriptResponse.transcript.length });
-
-      // Then send transcript to background script for summarization
-      log.info('Sending transcript to background for summarization');
-      const summaryResponse = await chrome.runtime.sendMessage({
-        action: 'summarize',
-        transcript: transcriptResponse.transcript
-      });
-
-      if (summaryResponse.error) {
-        throw new Error(summaryResponse.error);
-      }
-      log.success('Received summary', { length: summaryResponse.summary.length });
-
-      // Display summary
-      summaryText.innerHTML = sanitizeHTML(summaryResponse.summary);
-      summary.classList.remove('hidden');
+      // Close the popup
+      window.close();
     } catch (err) {
-      log.error('Summarization process failed:', err);
-      // If error is about API key not being configured, show API config
-      if (err.message.includes('API key not configured')) {
-        apiConfig.classList.remove('hidden');
-        summarizeBtn.classList.add('hidden');
-      } else {
-        error.querySelector('.error-message').textContent = err.message;
-        error.classList.remove('hidden');
-      }
+      log.error('Refresh failed:', err);
+      error.querySelector('.error-message').textContent = err.message;
+      error.classList.remove('hidden');
     } finally {
-      loading.classList.add('hidden');
-      summarizeBtn.disabled = false;
+      refreshBtn.disabled = false;
     }
   });
 }); 

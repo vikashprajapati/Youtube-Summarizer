@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Transcript Summarizer</title>
+  <link rel="stylesheet" href="../styles/popup.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <i class="fab fa-youtube"></i>
+      <h2>YouTube Summarizer</h2>
+    </div>
+
+    <div id="api-config" class="hidden">
+      <div class="api-config-content">
+        <h3><i class="fas fa-key"></i> API Key Required</h3>
+        <p>To use this extension, you need a Google Gemini API key:</p>
+        <ol>
+          <li>Visit <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+          <li>Create an account if needed</li>
+          <li>Generate an API key</li>
+        </ol>
+        <div class="input-group">
+          <input type="password" id="apiKey" placeholder="Enter your Gemini API key">
+          <button id="toggleVisibility" class="icon-button">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <button id="saveApiKey" class="primary-button">
+          <i class="fas fa-save"></i>
+          Save API Key
+        </button>
+        <div id="apiStatus" class="status"></div>
+      </div>
+    </div>
+
+    <div id="status-message" class="status-message">
+      <p>The summary will appear automatically on YouTube video pages.</p>
+      <p class="note">Look for the AI Summary panel on the right side of the video.</p>
+    </div>
+
+    <button id="refreshSummary" class="secondary-button">
+      <i class="fas fa-sync-alt"></i>
+      Refresh Summary
+    </button>
+
+    <div id="error" class="hidden">
+      <div class="error-content">
+        <i class="fas fa-exclamation-circle"></i>
+        <p class="error-message"></p>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
