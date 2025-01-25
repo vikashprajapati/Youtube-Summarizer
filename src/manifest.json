@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Transcript Summarizer",
+  "version": "1.0",
+  "description": "Summarizes YouTube video transcripts using Gemini AI",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "css": ["styles/content.css"],
+      "js": ["lib/purify.min.js", "content/content.js"]
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["styles/content.css"],
+    "matches": ["https://www.youtube.com/*"]
+  }],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "options_page": "options/options.html"
+} 
