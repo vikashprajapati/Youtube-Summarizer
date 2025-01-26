@@ -11,6 +11,18 @@
   <strong>Get instant AI-powered summaries of YouTube videos while you watch!</strong>
 </p>
 
+## 📸 Screenshots
+
+<div align="center">
+  <h3>In-Page Summary Panel</h3>
+  <img src="assets/screenshots/in-page-summary.png" alt="In-page summary panel" width="800"/>
+  <p><em>Summary panel seamlessly integrated into YouTube's interface</em></p>
+
+  <h3>Extension Popup</h3>
+  <img src="assets/screenshots/popup-ui.png" alt="Extension popup interface" width="400"/>
+  <p><em>Modern popup interface matching YouTube's design</em></p>
+</div>
+
 ## ✨ Features
 
 - 🎥 **Automatic Transcript Extraction**: Seamlessly extracts transcripts from YouTube videos
