@@ -19,10 +19,6 @@
       "js": ["lib/purify.min.js", "content/content.js"]
     }
   ],
-  "web_accessible_resources": [{
-    "resources": ["styles/content.css"],
-    "matches": ["https://www.youtube.com/*"]
-  }],
   "action": {
     "default_popup": "popup/popup.html"
   },

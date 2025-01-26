@@ -1,0 +1,72 @@
+#yt-summary-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 12px 0;
+  padding: 16px;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+#yt-summary-panel .header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+#yt-summary-panel .header i {
+  color: #1a73e8;
+  font-size: 16px;
+}
+
+#yt-summary-panel .header h3 {
+  margin: 0;
+  color: #0f0f0f;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+#yt-summary-panel .content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0f0f0f;
+}
+
+#yt-summary-panel .loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  color: #606060;
+}
+
+#yt-summary-panel .error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: #fce8e6;
+  border-radius: 8px;
+  color: #d93025;
+  font-size: 13px;
+}
+
+#yt-summary-panel .error i {
+  margin-top: 2px;
+}
+
+#yt-summary-panel ul {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+#yt-summary-panel li {
+  margin: 4px 0;
+}
+
+#yt-summary-panel b {
+  color: #1a73e8;
+} 

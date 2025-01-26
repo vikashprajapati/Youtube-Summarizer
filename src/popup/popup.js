@@ -1,13 +1,13 @@
 // Add logging utility
 const log = {
   info: (message, data) => {
-    console.log(`[Popup] 📘 ${message}`, data || '');
+    console.log(`[Transcript Summarizer] 📘 ${message}`, data || '');
   },
   error: (message, error) => {
-    console.error(`[Popup] ❌ ${message}`, error);
+    console.error(`[Transcript Summarizer] ❌ ${message}`, error);
   },
   success: (message, data) => {
-    console.log(`[Popup] ✅ ${message}`, data || '');
+    console.log(`[Transcript Summarizer] ✅ ${message}`, data || '');
   }
 };
 
@@ -56,24 +56,22 @@ async function injectContentScript(tabId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  log.info('Popup initialized');
   const apiConfig = document.getElementById('api-config');
+  const loading = document.getElementById('loading');
   const error = document.getElementById('error');
-  const refreshBtn = document.getElementById('refreshSummary');
+  const summary = document.getElementById('summary');
+  const summarizeBtn = document.getElementById('summarize');
+  const summaryText = document.getElementById('summary-text');
   const apiKey = document.getElementById('apiKey');
   const toggleVisibility = document.getElementById('toggleVisibility');
   const saveApiKey = document.getElementById('saveApiKey');
   const apiStatus = document.getElementById('apiStatus');
 
   // Check if API key is configured
-  log.info('Checking for API key');
   const result = await chrome.storage.local.get(['geminiApiKey']);
   if (!result.geminiApiKey) {
-    log.info('No API key found, showing configuration panel');
     apiConfig.classList.remove('hidden');
-    refreshBtn.classList.add('hidden');
-  } else {
-    log.success('API key found');
+    summarizeBtn.classList.add('hidden');
   }
 
   // Toggle API key visibility
@@ -91,19 +89,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   saveApiKey.addEventListener('click', async () => {
     const key = apiKey.value.trim();
     if (!key) {
-      log.error('Empty API key provided');
       apiStatus.textContent = 'Please enter an API key';
       apiStatus.className = 'status error';
       return;
     }
 
-    log.info('Validating API key');
     apiStatus.textContent = 'Validating API key...';
     apiStatus.className = 'status';
     saveApiKey.disabled = true;
 
     try {
-      log.info('Testing API key with Gemini endpoint');
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`,
         {
@@ -125,18 +120,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Invalid API key');
       }
 
-      log.success('API key validated successfully');
       await chrome.storage.local.set({ geminiApiKey: key });
       apiStatus.textContent = 'API key saved successfully!';
       apiStatus.className = 'status success';
       
-      // Show refresh button and hide API config after short delay
+      // Show summarize button and hide API config after short delay
       setTimeout(() => {
         apiConfig.classList.add('hidden');
-        refreshBtn.classList.remove('hidden');
+        summarizeBtn.classList.remove('hidden');
       }, 1500);
     } catch (error) {
-      log.error('API key validation failed:', error);
       apiStatus.textContent = `Error: ${error.message}`;
       apiStatus.className = 'status error';
     } finally {
@@ -144,11 +137,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Refresh button click handler
-  refreshBtn.addEventListener('click', async () => {
-    log.info('Refresh button clicked');
-    refreshBtn.disabled = true;
+  // Summarize button click handler
+  summarizeBtn.addEventListener('click', async () => {
+    log.info('Summarize button clicked');
+    // Hide any previous content
+    summary.classList.add('hidden');
     error.classList.add('hidden');
+    
+    // Show loading
+    loading.classList.remove('hidden');
+    summarizeBtn.disabled = true;
 
     try {
       // Get current tab
@@ -164,19 +162,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Please navigate to a YouTube video page');
       }
 
-      // Send refresh message to content script
-      log.info('Sending refresh message to content script');
-      await chrome.tabs.sendMessage(tab.id, { action: 'refresh' });
-      log.success('Refresh message sent');
+      // Inject content script if not already injected
+      log.info('Ensuring content script is injected');
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [
+            'lib/purify.min.js',
+            'content/content.js'
+          ]
+        });
+        log.success('Content script injected or already exists');
+      } catch (err) {
+        // If error is about script already existing, we can proceed
+        if (!err.message?.includes('already exists')) {
+          throw err;
+        }
+      }
+
+      // Send summarize message to content script
+      log.info('Requesting summarization');
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'summarize' });
       
-      // Close the popup
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      log.success('Summarization completed');
+      // Close the popup since summary will be shown on the page
       window.close();
     } catch (err) {
-      log.error('Refresh failed:', err);
-      error.querySelector('.error-message').textContent = err.message;
-      error.classList.remove('hidden');
+      log.error('Summarization failed:', err);
+      // If error is about API key not being configured, show API config
+      if (err.message.includes('API key not configured')) {
+        apiConfig.classList.remove('hidden');
+        summarizeBtn.classList.add('hidden');
+      } else {
+        error.querySelector('.error-message').textContent = err.message;
+        error.classList.remove('hidden');
+      }
     } finally {
-      refreshBtn.disabled = false;
+      loading.classList.add('hidden');
+      summarizeBtn.disabled = false;
     }
   });
 }); 

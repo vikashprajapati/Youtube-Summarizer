@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Transcript Summarizer - Options</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 16px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>API Key Configuration</h2>
+        <p>To use this extension, you need a Google Gemini API key:</p>
+        <ol>
+            <li>Visit <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+            <li>Create an account if you haven't already</li>
+            <li>Generate an API key</li>
+            <li>Copy and paste your API key below</li>
+        </ol>
+        
+        <div>
+            <input type="password" id="apiKey" placeholder="Enter your Gemini API key">
+            <button id="toggleVisibility">Show/Hide</button>
+        </div>
+        
+        <button id="save">Save API Key</button>
+        <div id="status"></div>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html> 

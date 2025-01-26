@@ -35,15 +35,12 @@
       </div>
     </div>
 
-    <div id="status-message" class="status-message">
-      <p>The summary will appear automatically on YouTube video pages.</p>
-      <p class="note">Look for the AI Summary panel on the right side of the video.</p>
+    <div id="loading" class="hidden">
+      <div class="loading-content">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Generating summary...</p>
+      </div>
     </div>
-
-    <button id="refreshSummary" class="secondary-button">
-      <i class="fas fa-sync-alt"></i>
-      Refresh Summary
-    </button>
 
     <div id="error" class="hidden">
       <div class="error-content">
@@ -51,6 +48,19 @@
         <p class="error-message"></p>
       </div>
     </div>
+
+    <div id="summary" class="hidden">
+      <div class="summary-header">
+        <i class="fas fa-list-ul"></i>
+        <h3>Summary</h3>
+      </div>
+      <div id="summary-text" class="summary-content"></div>
+    </div>
+
+    <button id="summarize">
+      <i class="fas fa-magic"></i>
+      <span>Summarize Video</span>
+    </button>
   </div>
   <script src="popup.js"></script>
 </body>
