@@ -1,0 +1,38 @@
+graph TD
+    A["Page Load"] --> B["content.js: initialize()"]
+    
+    B --> C["content.js: addFontAwesome()"]
+    B --> D["content.js: waitForElement()"]
+    D --> E["content.js: createSummaryPanel()"]
+    E --> F["content.js: getYouTubeTranscript()"]
+    
+    F --> G{"content.js: Panel Open?"}
+    G -->|No| H["content.js: findTranscriptButton()"]
+    H --> I["content.js: clickTranscriptButton()"]
+    I --> J["content.js: waitForElement()"]
+    G -->|Yes| K["content.js: Extract Segments"]
+    J --> K
+    K --> L["content.js: closeTranscriptPanel()"]
+    
+    L --> M["content.js: sendMessage()"]
+    M --> N["background.js: summarizeTranscript()"]
+    N --> O["background.js: getApiKey()"]
+    O --> P["background.js: Call Gemini API"]
+    P --> Q["background.js: Return Summary"]
+    Q --> R["content.js: updatePanelContent()"]
+    
+    F -->|Error| S["content.js: closeTranscriptPanel()"]
+    S --> T["content.js: updatePanelContent()"]
+    N -->|Error| U["background.js: Return Error"]
+    U --> T
+
+    V["URL Change"] --> W["content.js: MutationObserver"]
+    W -->|YouTube Video URL| B
+
+    classDef start fill:#f9f,stroke:#333,stroke-width:2px
+    classDef success fill:#9f9,stroke:#333,stroke-width:2px
+    classDef error fill:#f99,stroke:#333,stroke-width:2px
+    
+    class A start
+    class R success
+    class T error

@@ -376,8 +376,11 @@ function createSummaryPanel() {
   panel.id = 'yt-summary-panel';
   panel.innerHTML = `
     <div class="header">
-      <i class="fas fa-robot"></i>
+      <i class="fab fa-youtube"></i>
       <h3>AI Summary</h3>
+      <button class="refresh-button" aria-label="Refresh summary">
+        <i class="fas fa-sync-alt"></i>
+      </button>
     </div>
     <div class="content">
       <div class="loading">
@@ -386,6 +389,15 @@ function createSummaryPanel() {
       </div>
     </div>
   `;
+
+  // Add refresh button click handler
+  const refreshButton = panel.querySelector('.refresh-button');
+  refreshButton.addEventListener('click', () => {
+    handleSummarization().catch(error => {
+      updatePanelContent(error.message, true);
+    });
+  });
+
   return panel;
 }
 
