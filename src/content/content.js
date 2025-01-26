@@ -70,13 +70,16 @@ async function handleSummarization() {
 async function findTranscriptButton() {
   log.info('Looking for transcript button...');
 
+  // Wait for YouTube's menu to be fully loaded
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
   // First, try to find and click the more actions menu if it's not already expanded
-  const moreActionsButton = document.querySelector('button[aria-label="More actions"]');
+  const moreActionsButton = document.querySelector('button[aria-label="More actions"], ytd-menu-renderer button');
   if (moreActionsButton) {
     log.info('Found more actions menu, clicking it');
     moreActionsButton.click();
-    // Wait for menu to appear
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait longer for menu to appear and populate
+    await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
   // Try different selectors in order of specificity
@@ -84,50 +87,61 @@ async function findTranscriptButton() {
     // Direct transcript button selectors
     'button[aria-label="Show transcript"]',
     'button[aria-label="Open transcript"]',
+    'ytd-menu-service-item-renderer[aria-label="Show transcript"]',
+    'ytd-menu-service-item-renderer[aria-label="Open transcript"]',
     
-    // Menu item selectors
-    'ytd-menu-service-item-renderer button[aria-label*="transcript" i]',
-    'ytd-menu-popup-renderer button[aria-label*="transcript" i]',
+    // Menu item selectors with text content
+    'ytd-menu-service-item-renderer:has(yt-formatted-string:contains("transcript"))',
+    'ytd-menu-service-item-renderer:has(span:contains("transcript"))',
+    
+    // Menu popup selectors
     'ytd-menu-popup-renderer ytd-menu-service-item-renderer',
-    
-    // More specific menu locations
     'tp-yt-paper-listbox ytd-menu-service-item-renderer',
     '#items.ytd-menu-popup-renderer ytd-menu-service-item-renderer',
     
-    // Fallback selectors
-    'ytd-menu-renderer button',
-    'ytd-menu-popup-renderer button'
+    // More specific menu locations
+    '#menu-container ytd-menu-service-item-renderer',
+    '#top-level-buttons-computed ytd-menu-service-item-renderer',
+    'ytd-menu-renderer ytd-menu-service-item-renderer'
   ];
 
-  for (const selector of selectors) {
-    const elements = Array.from(document.querySelectorAll(selector));
-    log.info(`Checking selector: ${selector}, found ${elements.length} elements`);
-    
-    // Try to find button by checking both text content and aria-label
-    const transcriptButton = elements.find(element => {
-      const text = (element.textContent || '').toLowerCase().trim();
-      const ariaLabel = (element.getAttribute('aria-label') || '').toLowerCase();
-      const hasTranscriptText = text.includes('transcript') || ariaLabel.includes('transcript');
-      
-      // Log each potential button for debugging
-      if (text || ariaLabel) {
-        log.info('Potential button:', { text, ariaLabel, hasTranscript: hasTranscriptText });
-      }
-      
-      return hasTranscriptText;
-    });
+  // Try each selector multiple times with small delays
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      log.info(`Retry attempt ${attempt + 1} to find transcript button`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 
-    if (transcriptButton) {
-      log.success('Found transcript button:', {
-        selector,
-        ariaLabel: transcriptButton.getAttribute('aria-label'),
-        text: transcriptButton.textContent.trim()
+    for (const selector of selectors) {
+      const elements = Array.from(document.querySelectorAll(selector));
+      log.info(`Checking selector: ${selector}, found ${elements.length} elements`);
+      
+      // Try to find button by checking both text content and aria-label
+      const transcriptButton = elements.find(element => {
+        const text = (element.textContent || '').toLowerCase().trim();
+        const ariaLabel = (element.getAttribute('aria-label') || '').toLowerCase();
+        const hasTranscriptText = text.includes('transcript') || ariaLabel.includes('transcript');
+        
+        // Log each potential button for debugging
+        if (text || ariaLabel) {
+          log.info('Potential button:', { text, ariaLabel, hasTranscript: hasTranscriptText });
+        }
+        
+        return hasTranscriptText;
       });
-      return transcriptButton;
+
+      if (transcriptButton) {
+        log.success('Found transcript button:', {
+          selector,
+          ariaLabel: transcriptButton.getAttribute('aria-label'),
+          text: transcriptButton.textContent.trim()
+        });
+        return transcriptButton;
+      }
     }
   }
 
-  // If still not found, try finding any menu item with transcript text
+  // If still not found, try one last time with the menu items
   const menuItems = Array.from(document.querySelectorAll('ytd-menu-service-item-renderer'));
   for (const item of menuItems) {
     const text = item.textContent.toLowerCase().trim();
@@ -137,12 +151,22 @@ async function findTranscriptButton() {
     }
   }
 
+  // Before giving up, check if video might not have transcripts
+  const player = document.querySelector('video');
+  if (player) {
+    const videoTime = player.duration;
+    if (typeof videoTime === 'undefined' || videoTime === 0) {
+      throw new Error('Video is not yet loaded. Please wait a moment and try again.');
+    }
+  }
+
   // Log all menu items for debugging
   log.error('Could not find transcript button. Available menu items:', 
     menuItems.map(item => ({
       text: item.textContent.trim(),
       ariaLabel: item.getAttribute('aria-label'),
-      visible: item.offsetParent !== null
+      visible: item.offsetParent !== null,
+      classes: item.className
     })).filter(item => item.text || item.ariaLabel)
   );
 
@@ -403,43 +427,82 @@ async function waitForElement(selector, timeout = 5000) {
 // Main initialization function
 async function initialize() {
   try {
+    log.info('Starting initialization');
+
+    // Wait for video to be loaded
+    const videoPlayer = await waitForElement('video');
+    if (!videoPlayer) {
+      throw new Error('Video player not found');
+    }
+
+    // Wait for video metadata to be loaded
+    if (!videoPlayer.duration) {
+      log.info('Waiting for video metadata...');
+      await new Promise((resolve) => {
+        videoPlayer.addEventListener('loadedmetadata', resolve, { once: true });
+        // Timeout after 10 seconds
+        setTimeout(resolve, 10000);
+      });
+    }
+
     // Add Font Awesome
     addFontAwesome();
     
     // Wait for the secondary column
     const secondaryColumn = await waitForElement('#secondary');
+    log.info('Found secondary column');
     
     // Create and inject panel
     const panel = createSummaryPanel();
     secondaryColumn.insertBefore(panel, secondaryColumn.firstChild);
+    log.success('Summary panel injected');
+
+    // Wait a moment for YouTube's UI to fully load
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Get transcript and generate summary
-    const transcript = await getYouTubeTranscript();
-    
-    // Request summary from background script
-    const response = await chrome.runtime.sendMessage({
-      action: 'summarize',
-      transcript
-    });
-    
-    if (response.error) {
-      throw new Error(response.error);
+    try {
+      // Get transcript and generate summary
+      const transcript = await getYouTubeTranscript();
+      log.success('Got transcript, requesting summary');
+      
+      // Request summary from background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'summarize',
+        transcript
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      updatePanelContent(response.summary);
+      log.success('Summary displayed successfully');
+    } catch (error) {
+      log.error('Failed to generate summary:', error);
+      updatePanelContent(error.message, true);
     }
-    
-    updatePanelContent(response.summary);
   } catch (error) {
-    console.error('Failed to initialize:', error);
+    log.error('Failed to initialize:', error);
     updatePanelContent(error.message, true);
   }
 }
 
-// Listen for page navigation
+// Listen for page navigation with debounce
 let currentUrl = location.href;
+let initializeTimeout;
+
 const observer = new MutationObserver(() => {
   if (location.href !== currentUrl) {
     currentUrl = location.href;
     if (currentUrl.includes('youtube.com/watch')) {
-      initialize();
+      // Clear any pending initialization
+      if (initializeTimeout) {
+        clearTimeout(initializeTimeout);
+      }
+      // Delay initialization to ensure page is loaded
+      initializeTimeout = setTimeout(() => {
+        initialize();
+      }, 2000);
     }
   }
 });
@@ -449,7 +512,10 @@ observer.observe(document.querySelector('body'), {
   subtree: true
 });
 
-// Initial load
+// Initial load with delay
 if (location.href.includes('youtube.com/watch')) {
-  initialize();
+  // Delay initial load to ensure page is ready
+  setTimeout(() => {
+    initialize();
+  }, 2000);
 } 
