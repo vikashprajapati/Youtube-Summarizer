@@ -187,6 +187,69 @@ async function clickTranscriptButton(button) {
   }
 }
 
+// Add function to close transcript panel
+async function closeTranscriptPanel() {
+  log.info('Attempting to close transcript panel');
+  try {
+    // Try to find the close button with the specific class and aria-label
+    const closeButton = document.querySelector(
+      'button.yt-spec-button-shape-next[aria-label="Close transcript"], ' +
+      'button.yt-spec-button-shape-next--text[aria-label="Close transcript"]'
+    );
+
+    if (closeButton) {
+      log.info('Found close button, clicking it');
+      closeButton.click();
+      
+      // Wait a moment and verify panel is closed
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const panel = document.querySelector('ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]');
+      if (!panel || panel.hasAttribute('hidden') || !panel.isConnected) {
+        log.success('Transcript panel closed successfully');
+        return true;
+      }
+    } else {
+      log.info('No close button found, trying alternative methods');
+    }
+
+    // If close button not found or didn't work, try clicking outside
+    document.body.click();
+    log.info('Attempted to close panel by clicking outside');
+    
+    // Verify panel is closed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const panel = document.querySelector('ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]');
+    if (!panel || panel.hasAttribute('hidden') || !panel.isConnected) {
+      log.success('Transcript panel closed by clicking outside');
+      return true;
+    }
+
+    // If still not closed, try to find any button with close icon
+    const anyCloseButton = Array.from(document.querySelectorAll('button')).find(button => {
+      const ariaLabel = button.getAttribute('aria-label');
+      return ariaLabel && ariaLabel.toLowerCase().includes('close transcript');
+    });
+
+    if (anyCloseButton) {
+      log.info('Found alternative close button, attempting to click');
+      anyCloseButton.click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const finalCheck = document.querySelector('ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]');
+      if (!finalCheck || finalCheck.hasAttribute('hidden') || !finalCheck.isConnected) {
+        log.success('Transcript panel closed using alternative button');
+        return true;
+      }
+    }
+
+    log.error('Failed to close transcript panel after all attempts');
+    return false;
+  } catch (error) {
+    log.error('Error while closing transcript panel:', error);
+    return false;
+  }
+}
+
 async function getYouTubeTranscript() {
   try {
     log.info('Starting transcript extraction');
@@ -257,8 +320,19 @@ async function getYouTubeTranscript() {
       preview: transcript.slice(0, 100) + '...'
     });
 
+    // Close the transcript panel
+    if (needsToClick) {
+      await closeTranscriptPanel();
+    }
+
     return transcript.trim();
   } catch (error) {
+    // Try to close panel even if we got an error
+    try {
+      await closeTranscriptPanel();
+    } catch (closeError) {
+      log.error('Error while closing panel after failure:', closeError);
+    }
     log.error('Transcript extraction failed:', error);
     throw new Error(`Failed to get transcript: ${error.message}`);
   }
