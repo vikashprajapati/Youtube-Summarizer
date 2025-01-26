@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Transcript Summarizer",
+  "name": "YouTube Video Summarizer",
   "version": "1.0",
-  "description": "Summarizes YouTube video transcripts using Gemini AI",
+  "description": "Summarizes YouTube video using Gemini AI",
   "permissions": [
     "storage",
     "activeTab",
@@ -20,7 +20,9 @@
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_title": "YouTube Video Summarizer"
+
   },
   "background": {
     "service_worker": "background/background.js"
