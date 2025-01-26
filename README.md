@@ -15,11 +15,11 @@
 
 <div align="center">
   <h3>In-Page Summary Panel</h3>
-  <img src="assets/screenshots/in-page-summary.png" alt="In-page summary panel" width="800"/>
+  <img src="assets/screenshots/in-page-summary.png" alt="In-page summary panel" width="600"/>
   <p><em>Summary panel seamlessly integrated into YouTube's interface</em></p>
 
   <h3>Extension Popup</h3>
-  <img src="assets/screenshots/popup-ui.png" alt="Extension popup interface" width="400"/>
+  <img src="assets/screenshots/popup-ui.png" alt="Extension popup interface" width="300"/>
   <p><em>Modern popup interface matching YouTube's design</em></p>
 </div>
 
